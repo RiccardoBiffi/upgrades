@@ -1,6 +1,5 @@
 from enum import Enum
-from brownie import network, accounts, config, Contract
-from brownie import web3
+from brownie import network, accounts, config
 import eth_utils
 
 FORKED_LOCAL_ENVIRONMENTS = ["mainnet-fork", "mainnet-fork-dev"]
@@ -49,5 +48,42 @@ def encode_function_data(
         [bytes]: Initializer function and arguments encoded into bytes.
     """
     if len(args) == 0 or init_function == None:
-        return eth_utils.to_bytes(hexstr="0x")  # blank hex means no arguments to caller
+        return eth_utils.to_bytes(
+            hexstr="0x"
+        )  # blank hex means "no arguments" to caller
     return init_function.encode_input(*args)
+
+
+def upgrade(
+    account,
+    proxy,
+    new_implentation_addr,
+    proxy_admin=None,
+    initializer=None,
+    *args  # can be None
+):
+    if proxy_admin:
+        if initializer:
+            encoded_initializer = encode_function_data(initializer, *args)
+            # we have an initializer, so we upgrade and call it
+            tx = proxy_admin.upgradeAndCall(
+                proxy,
+                new_implentation_addr,
+                encoded_initializer,
+                {"from": account},
+            )
+        else:
+            tx = proxy_admin.upgrade(proxy, new_implentation_addr, {"from": account})
+    else:
+        if initializer:
+            encoded_initializer = encode_function_data(initializer, *args)
+            # we have an initializer, so we upgrade and call it
+            tx = proxy.upgradeToAndCall(
+                new_implentation_addr,
+                encoded_initializer,
+                {"from": account},
+            )
+        else:
+            tx = proxy.upgradeTo(new_implentation_addr, {"from": account})
+
+    return tx
