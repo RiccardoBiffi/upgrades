@@ -1,6 +1,7 @@
 from scripts.utilities import get_account, encode_function_data, upgrade
 from brownie import (
     network,
+    config,
     Box,
     BoxV2,
     ProxyAdmin,
@@ -12,8 +13,14 @@ from brownie import (
 def main():
     account = get_account()
     print(f"Deploying to {network.show_active()}")
-    box = Box.deploy({"from": account})
-    proxy_admin = ProxyAdmin.deploy({"from": account})
+    box = Box.deploy(
+        {"from": account},
+        publish_source=config["networks"][network.show_active()]["verify"],
+    )
+    proxy_admin = ProxyAdmin.deploy(
+        {"from": account},
+        publish_source=config["networks"][network.show_active()]["verify"],
+    )
 
     # When we call the implementation, we need to initialize its constructor (any method).
     # That initialization is responsability of the proxy.
@@ -25,7 +32,11 @@ def main():
 
     # maybe add the "gas_limit" attribute in last arg
     proxy = TransparentUpgradeableProxy.deploy(
-        box.address, proxy_admin.address, box_initializer_bytes, {"from": account}
+        box.address,
+        proxy_admin.address,
+        box_initializer_bytes,
+        {"from": account},
+        publish_source=config["networks"][network.show_active()]["verify"],
     )
 
     print(f"Proxy deployed to {proxy.address}.")
@@ -46,7 +57,10 @@ def main():
 
     # box_pry.increment({"from": account}) # fails
 
-    box_v2 = BoxV2.deploy({"from": account})
+    box_v2 = BoxV2.deploy(
+        {"from": account},
+        publish_source=config["networks"][network.show_active()]["verify"],
+    )
     boxV2_pry = Contract.from_abi("BoxV2", proxy.address, BoxV2.abi)
     tx = upgrade(account, proxy, box_v2.address, proxy_admin)
 
